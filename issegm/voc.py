@@ -9,6 +9,7 @@ import time
 from functools import partial
 from PIL import Image
 from multiprocessing import Pool
+sys.path.append('/home/chris/research/segmentation/ademxapp')
 
 import numpy as np
 
@@ -314,6 +315,10 @@ def get_dataset_specs(args, model_specs):
             max_shape = np.array((640, 640))
         else:
             max_shape = np.array((500, 500))
+    elif dataset == 'sequence-1':
+        num_classes = 19
+        valid_labels = range(num_classes)
+        max_shape = np.array([500, 500])
     else:
         raise NotImplementedError('Unknow dataset: {}'.format(dataset))
     
@@ -619,6 +624,8 @@ def _val_impl(args, model_specs, logger):
         if do_forward:
             im = transformer(rim)
             imh, imw = im.shape[:2]
+            print('imh, imw', imh, imw)
+            print('crop_size', crop_size)
             
             # init
             if batch is None:
@@ -678,6 +685,10 @@ def _val_impl(args, model_specs, logger):
             if dargs.cmap is not None:
                 im_to_save.putpalette(dargs.cmap.ravel())
             im_to_save.save(out_path)
+
+            import cv2
+            color_predictions = cv2.imread(out_path)
+            cv2.imwrite(out_path, color_predictions*.7 + cv2.imread(im_path)*.3)
         else:
             assert not has_gt
         
@@ -697,6 +708,8 @@ def _val_impl(args, model_specs, logger):
         
         scorer.update(pred_label, label, i)
     logger.info('Done in %.2f s.', time.time() - start)
+    logger.info('Check the output directory for prediction visualizations.')
+
 
 if __name__ == "__main__":
     util.cfg['choose_interpolation_method'] = True
@@ -716,4 +729,3 @@ if __name__ == "__main__":
         _val_impl(args, model_specs, logger)
     else:
         raise NotImplementedError('Unknown phase: {}'.format(args.phase))
-
